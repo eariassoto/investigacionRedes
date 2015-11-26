@@ -5,7 +5,9 @@
 #include <ws2tcpip.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <fstream>
 
+using namespace std;
 
 // Need to link with Ws2_32.lib, Mswsock.lib, and Advapi32.lib
 #pragma comment (lib, "Ws2_32.lib")
@@ -13,20 +15,50 @@
 #pragma comment (lib, "AdvApi32.lib")
 
 
-#define DEFAULT_BUFLEN 512
+#define DEFAULT_BUFLEN 2048
 #define DEFAULT_PORT "5000"
+const char* IP_ADDRESS = "10.1.128.43";
+
+int FileSend(char* sendbuf, int sendbuflen, SOCKET FileSendSocket, char *FilePath)
+{
+	streampos filesize = 0;
+	ifstream in(FilePath, ios::binary);
+	ZeroMemory(&sendbuf, sendbuflen);
+	int r = -1;
+
+	if (in.is_open())
+	{
+		while (1)
+		{
+			in.read(sendbuf, sendbuflen);
+			if (in.eof())
+			{
+				printf("End of File sending from Client\n");
+				in.close();
+				break;
+			}
+			else
+			{
+				r = send(FileSendSocket, sendbuf, sendbuflen, 0);
+				ZeroMemory(&sendbuf, sendbuflen);
+			}
+		}
+	}
+	return r;
+}
 
 int __cdecl main(int argc, char **argv)
 {
-	printf("inicio");
+	printf("inicio\n");
 	WSADATA wsaData;
 	SOCKET ConnectSocket = INVALID_SOCKET;
 	struct addrinfo *result = NULL,
 		*ptr = NULL,
 		hints;
-	char *sendbuf = "this is a test";
+	char sendbuf[DEFAULT_BUFLEN];
 	char recvbuf[DEFAULT_BUFLEN];
 	int iResult;
+	int sendbuflen = DEFAULT_BUFLEN;
 	int recvbuflen = DEFAULT_BUFLEN;
 
 	// Validate the parameters
@@ -48,7 +80,7 @@ int __cdecl main(int argc, char **argv)
 	hints.ai_protocol = IPPROTO_TCP;
 
 	// Resolve the server address and port
-	iResult = getaddrinfo(argv[1], DEFAULT_PORT, &hints, &result);
+	iResult = getaddrinfo(IP_ADDRESS, DEFAULT_PORT, &hints, &result);
 	if (iResult != 0) {
 		printf("getaddrinfo failed with error: %d\n", iResult);
 		WSACleanup();
@@ -85,8 +117,31 @@ int __cdecl main(int argc, char **argv)
 		return 1;
 	}
 
-	// Send an initial buffer
-	iResult = send(ConnectSocket, sendbuf, (int)strlen(sendbuf), 0);
+	streampos size;
+	char * memblock;
+
+	TCHAR Buffer[2048];
+	DWORD dwRet;
+
+
+	ifstream file("C:\\Users\\B30640\\Desktop\\investigacionRedes-master\\output.txt", ios::in | ios::binary | ios::ate);
+	if (file.is_open())
+	{
+		size = file.tellg();
+		memblock = new char[size];
+		file.seekg(0, ios::beg);
+		file.read(memblock, size);
+		file.close();
+
+		printf("the entire file content is in memory\n");
+		iResult = send(ConnectSocket, memblock, size, 0);
+
+	}
+	else printf("Unable to open file\n");
+
+	
+	// send(ConnectSocket, sendbuf, (int)strlen(sendbuf), 0);
+
 	if (iResult == SOCKET_ERROR) {
 		printf("send failed with error: %d\n", WSAGetLastError());
 		closesocket(ConnectSocket);

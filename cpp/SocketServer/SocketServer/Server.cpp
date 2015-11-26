@@ -7,13 +7,26 @@
 #include <ws2tcpip.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <fstream>
+
+using namespace std;
 
 // Need to link with Ws2_32.lib
 #pragma comment (lib, "Ws2_32.lib")
 // #pragma comment (lib, "Mswsock.lib")
 
-#define DEFAULT_BUFLEN 512
+#define DEFAULT_BUFLEN 2048
 #define DEFAULT_PORT "5000"
+
+ofstream out("output.txt", ios::binary);
+void FileReceive(char* recvbuf, int recvbuflen)
+{
+	if (out.is_open())
+	{
+		out.write(recvbuf, recvbuflen);
+		ZeroMemory(&recvbuf, recvbuflen);
+	}
+}
 
 int __cdecl main(void)
 {
@@ -94,11 +107,14 @@ int __cdecl main(void)
 	closesocket(ListenSocket);
 
 	// Receive until the peer shuts down the connection
+	int contBytes = 0;
 	do {
 
 		iResult = recv(ClientSocket, recvbuf, recvbuflen, 0);
+
 		if (iResult > 0) {
 			printf("Bytes received: %d\n", iResult);
+			contBytes += iResult;
 
 			// Echo the buffer back to the sender
 			iSendResult = send(ClientSocket, recvbuf, iResult, 0);
@@ -120,6 +136,14 @@ int __cdecl main(void)
 		}
 
 	} while (iResult > 0);
+
+	ofstream out("C:\\Users\\B30640\\Desktop\\investigacionRedes-master\\output2.txt", ios::binary);
+	if (out.is_open())
+	{
+		out.write(recvbuf, contBytes);
+		ZeroMemory(&recvbuf, recvbuflen);
+	}
+	
 
 	// shutdown the connection since we're done
 	iResult = shutdown(ClientSocket, SD_SEND);
